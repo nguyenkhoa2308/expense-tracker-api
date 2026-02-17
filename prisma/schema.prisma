@@ -1,0 +1,173 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum NotificationType {
+  BUDGET_WARNING
+  SYNC_COMPLETE
+  SYSTEM
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String?
+  name      String?
+  role      Role     @default(USER)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Auth refresh token
+  refreshToken       String?   @map("refresh_token")
+  refreshTokenExpiry DateTime? @map("refresh_token_expiry")
+
+  // Gmail OAuth tokens
+  gmailAccessToken  String? @map("gmail_access_token")
+  gmailRefreshToken String? @map("gmail_refresh_token")
+  gmailTokenExpiry  DateTime? @map("gmail_token_expiry")
+  gmailConnected    Boolean @default(false) @map("gmail_connected")
+
+  expenses              Expense[]
+  incomes               Income[]
+  budgets               Budget[]
+  syncedEmails          SyncedEmail[]
+  chatMessages          ChatMessage[]
+  notifications         Notification[]
+  recurringTransactions RecurringTransaction[]
+
+  @@map("users")
+}
+
+// Track synced emails to avoid duplicates
+model SyncedEmail {
+  id        String   @id @default(uuid())
+  messageId String   @map("message_id")
+  subject   String?
+  from      String?
+  syncedAt  DateTime @default(now()) @map("synced_at")
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, messageId])
+  @@map("synced_emails")
+}
+
+// Expense model for expense tracker
+model Expense {
+  id          String   @id @default(uuid())
+  amount      Decimal  @db.Decimal(10, 2)
+  description String?
+  category    String
+  date        DateTime @default(now())
+  source      String   @default("manual") // manual, email, sms
+  emailId     String?  @map("email_id") // Reference to synced email
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date(sort: Desc)])
+  @@index([userId, category])
+  @@map("expenses")
+}
+
+// Income model for income tracker
+model Income {
+  id          String   @id @default(uuid())
+  amount      Decimal  @db.Decimal(10, 2)
+  description String?
+  category    String   // salary, freelance, investment, gift, bonus, other
+  date        DateTime @default(now())
+  source      String   @default("manual") // manual, email
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date(sort: Desc)])
+  @@index([userId, category])
+  @@map("incomes")
+}
+
+// Budget per category per month
+model Budget {
+  id        String   @id @default(uuid())
+  category  String
+  amount    Decimal  @db.Decimal(10, 2)
+  month     Int
+  year      Int
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, category, month, year])
+  @@index([userId, month, year])
+  @@map("budgets")
+}
+
+// Notifications
+model Notification {
+  id        String           @id @default(uuid())
+  type      NotificationType
+  title     String
+  message   String           @db.Text
+  isRead    Boolean          @default(false) @map("is_read")
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+// Recurring transactions (auto-created expenses/incomes)
+model RecurringTransaction {
+  id          String   @id @default(uuid())
+  type        String   // "expense" or "income"
+  amount      Decimal  @db.Decimal(10, 2)
+  description String?
+  category    String
+  frequency   String   // "daily", "weekly", "monthly", "yearly"
+  nextDate    DateTime @map("next_date")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isActive])
+  @@index([nextDate, isActive])
+  @@map("recurring_transactions")
+}
+
+// AI Chat messages
+model ChatMessage {
+  id        String   @id @default(uuid())
+  role      String   // 'user' or 'assistant'
+  content   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("chat_messages")
+}
