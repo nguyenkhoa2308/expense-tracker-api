@@ -62,7 +62,11 @@ export class AiService {
     }
   }
 
-  async chatStream(userId: string, message: string, onChunk: (chunk: string) => void): Promise<void> {
+  async chatStream(
+    userId: string,
+    message: string,
+    onChunk: (chunk: string) => void,
+  ): Promise<void> {
     if (!message || typeof message !== 'string' || message.trim() === '') {
       onChunk('Vui lòng nhập câu hỏi của bạn.');
       return;
@@ -81,29 +85,72 @@ export class AiService {
     });
 
     const [expenses, incomes, expenseStats, incomeStats] = await Promise.all([
-      this.prisma.expense.findMany({ where: { userId }, orderBy: { date: 'desc' }, take: 100 }),
-      this.prisma.income.findMany({ where: { userId }, orderBy: { date: 'desc' }, take: 100 }),
+      this.prisma.expense.findMany({
+        where: { userId },
+        orderBy: { date: 'desc' },
+        take: 100,
+      }),
+      this.prisma.income.findMany({
+        where: { userId },
+        orderBy: { date: 'desc' },
+        take: 100,
+      }),
       this.getExpenseStats(userId),
       this.getIncomeStats(userId),
     ]);
 
-    const context = this.buildContext(expenses, expenseStats, incomes, incomeStats);
-    const systemPrompt = `Bạn là trợ lý AI giúp quản lý tài chính cá nhân. Trả lời bằng tiếng Việt, ngắn gọn và hữu ích.
+    const context = this.buildContext(
+      expenses,
+      expenseStats,
+      incomes,
+      incomeStats,
+    );
+    const systemPrompt = `Bạn là trợ lý tài chính AI trong ứng dụng "Expense Tracker".
 
-Dữ liệu tài chính của người dùng:
-${context}
+## PHẠM VI
+- CHỈ trả lời về: tài chính, chi tiêu, thu nhập, tiết kiệm, đầu tư, ngân sách.
+- Câu hỏi ngoài phạm vi → trả lời 1 câu: "Tôi chỉ hỗ trợ về tài chính thôi nhé! Bạn muốn hỏi gì về chi tiêu hoặc thu nhập?"
 
-Hãy phân tích và đưa ra lời khuyên dựa trên dữ liệu này. Nếu người dùng hỏi về thu nhập hoặc chi tiêu, hãy sử dụng dữ liệu thực tế.`;
+## FORMAT TRẢ LỜI (BẮT BUỘC TUÂN THỦ)
+- Tiếng Việt, tone bạn bè thân thiện
+- NGẮN GỌN: tối đa 3-5 câu, tối đa 80 từ
+- Dùng emoji vừa phải: 1-2 emoji mỗi tin nhắn
+- KHÔNG mở đầu dài dòng, KHÔNG kết luận thừa, đi thẳng vào vấn đề
+- BẮT BUỘC dùng markdown format:
+  + Liệt kê → dùng "- " (dấu gạch + space) ở đầu mỗi dòng
+  + LUÔN LUÔN thêm 1 dòng trống trước danh sách bullet (trước dấu "- " đầu tiên)
+  + Số tiền quan trọng → bọc trong **dấu đậm**
+  + Tiêu đề nhỏ → dùng **in đậm**
+
+Ví dụ câu trả lời ĐÚNG format:
+"""
+Tháng này bạn chi khá nhiều đó! 💰
+
+- **Ăn uống**: **500.000 ₫** (50%)
+- **Di chuyển**: **300.000 ₫** (30%)
+- **Mua sắm**: **200.000 ₫** (20%)
+"""
+
+Ví dụ câu trả lời SAI (KHÔNG ĐƯỢC làm thế này):
+"""
+Tôi có thể giúp bạn:
+Quản lý thu nhập
+Theo dõi chi tiêu
+Tạo ngân sách
+"""
+
+## DỮ LIỆU TÀI CHÍNH
+${context}`;
 
     const conversationHistory = history.reverse().map((msg) => ({
       role: msg.role as 'user' | 'assistant',
       content: msg.content,
     }));
 
-    const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
-      { role: 'system', content: systemPrompt },
-      ...conversationHistory,
-    ];
+    const messages: Array<{
+      role: 'system' | 'user' | 'assistant';
+      content: string;
+    }> = [{ role: 'system', content: systemPrompt }, ...conversationHistory];
 
     const model = this.getModel();
     let fullResponse = '';
@@ -126,7 +173,11 @@ Hãy phân tích và đưa ra lời khuyên dựa trên dữ liệu này. Nếu 
 
     // Save full response to DB
     await this.prisma.chatMessage.create({
-      data: { userId, role: 'assistant', content: fullResponse || 'Xin lỗi, tôi không thể trả lời.' },
+      data: {
+        userId,
+        role: 'assistant',
+        content: fullResponse || 'Xin lỗi, tôi không thể trả lời.',
+      },
     });
   }
 
@@ -166,7 +217,13 @@ Trả về đúng format JSON:
       // Extract JSON from response (handle markdown code blocks)
       const jsonMatch = raw.match(/\{[\s\S]*\}/);
       if (!jsonMatch) throw new Error('No JSON found');
-      const parsed = JSON.parse(jsonMatch[0]);
+      const parsed = JSON.parse(jsonMatch[0]) as {
+        amount?: number;
+        category?: string;
+        description?: string;
+        date?: string;
+        type?: string;
+      };
 
       return {
         amount: Number(parsed.amount) || 0,
@@ -182,13 +239,16 @@ Trả về đúng format JSON:
     }
   }
 
-  async confirmParsedTransaction(userId: string, data: {
-    amount: number;
-    category: string;
-    description?: string;
-    date: string;
-    type: 'expense' | 'income';
-  }) {
+  async confirmParsedTransaction(
+    userId: string,
+    data: {
+      amount: number;
+      category: string;
+      description?: string;
+      date: string;
+      type: 'expense' | 'income';
+    },
+  ) {
     if (data.type === 'income') {
       return this.prisma.income.create({
         data: {
@@ -251,14 +311,22 @@ Trả về đúng format JSON:
       description: string | null;
       date: Date;
     }>,
-    expenseStats: { total: number; byCategory: Record<string, number>; count: number },
+    expenseStats: {
+      total: number;
+      byCategory: Record<string, number>;
+      count: number;
+    },
     incomes: Array<{
       amount: unknown;
       category: string;
       description: string | null;
       date: Date;
     }>,
-    incomeStats: { total: number; byCategory: Record<string, number>; count: number },
+    incomeStats: {
+      total: number;
+      byCategory: Record<string, number>;
+      count: number;
+    },
   ): string {
     const expenseCategoryLabels: Record<string, string> = {
       food: 'Ăn uống',
@@ -329,13 +397,16 @@ Trả về đúng format JSON:
 
     // Combine and sort recent transactions
     const recentTransactions = [
-      ...expenses.slice(0, 5).map(e => ({ ...e, type: 'expense' as const })),
-      ...incomes.slice(0, 5).map(i => ({ ...i, type: 'income' as const })),
-    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10);
+      ...expenses.slice(0, 5).map((e) => ({ ...e, type: 'expense' as const })),
+      ...incomes.slice(0, 5).map((i) => ({ ...i, type: 'income' as const })),
+    ]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 10);
 
     for (const tx of recentTransactions) {
       const date = new Date(tx.date).toLocaleDateString('vi-VN');
-      const labels = tx.type === 'expense' ? expenseCategoryLabels : incomeCategoryLabels;
+      const labels =
+        tx.type === 'expense' ? expenseCategoryLabels : incomeCategoryLabels;
       const sign = tx.type === 'expense' ? '-' : '+';
       context += `- ${date}: ${sign}${formatCurrency(Number(tx.amount))} - ${labels[tx.category] || tx.category}${tx.description ? ` (${tx.description})` : ''}\n`;
     }
@@ -350,7 +421,10 @@ Trả về đúng format JSON:
     ]);
 
     const formatCurrency = (amount: number) =>
-      new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+      new Intl.NumberFormat('vi-VN', {
+        style: 'currency',
+        currency: 'VND',
+      }).format(amount);
 
     if (expenseStats.count === 0 && incomeStats.count === 0) {
       return 'Bạn chưa có giao dịch nào. Hãy thêm thu nhập hoặc chi tiêu để nhận phân tích.';
@@ -365,14 +439,18 @@ Trả về đúng format JSON:
 💡 **Nhận xét:**`;
 
     if (incomeStats.count > 0) {
-      const topIncome = Object.entries(incomeStats.byCategory).sort((a, b) => b[1] - a[1])[0];
+      const topIncome = Object.entries(incomeStats.byCategory).sort(
+        (a, b) => b[1] - a[1],
+      )[0];
       if (topIncome) {
         insights += `\n- Nguồn thu chính: **${this.getIncomeCategoryLabel(topIncome[0])}** (${((topIncome[1] / incomeStats.total) * 100).toFixed(0)}%)`;
       }
     }
 
     if (expenseStats.count > 0) {
-      const topExpense = Object.entries(expenseStats.byCategory).sort((a, b) => b[1] - a[1])[0];
+      const topExpense = Object.entries(expenseStats.byCategory).sort(
+        (a, b) => b[1] - a[1],
+      )[0];
       if (topExpense) {
         insights += `\n- Chi nhiều nhất: **${this.getCategoryLabel(topExpense[0])}** (${((topExpense[1] / expenseStats.total) * 100).toFixed(0)}%)`;
       }
