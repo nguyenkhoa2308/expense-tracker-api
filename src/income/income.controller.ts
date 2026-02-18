@@ -72,6 +72,19 @@ export class IncomeController {
     res.send('\uFEFF' + csv);
   }
 
+  @Get('export/pdf')
+  @ApiOperation({ summary: 'Export incomes as PDF report' })
+  async exportPdf(
+    @Request() req: { user: { id: string } },
+    @Query() query: StatsQueryDto,
+    @Res() res: Response,
+  ) {
+    const pdfBuffer = await this.service.exportPdf(req.user.id, query);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename=bao-cao-thu-nhap.pdf');
+    res.send(pdfBuffer);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get income by ID' })
   findOne(@Request() req: { user: { id: string } }, @Param('id') id: string) {
