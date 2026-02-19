@@ -1,6 +1,7 @@
 import {
   Controller,
   Post,
+  Patch,
   Body,
   Get,
   Req,
@@ -13,6 +14,9 @@ import * as express from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { OnboardingDto } from './dto/onboarding.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 const REFRESH_COOKIE_NAME = 'refresh_token';
@@ -111,5 +115,39 @@ export class AuthController {
   @ApiOperation({ summary: 'Get current user profile' })
   getProfile(@Req() req: express.Request & { user: { id: string } }) {
     return this.service.getProfile(req.user.id);
+  }
+
+  @Patch('profile')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update current user profile' })
+  updateProfile(
+    @Req() req: express.Request & { user: { id: string } },
+    @Body() dto: UpdateProfileDto,
+  ) {
+    return this.service.updateProfile(req.user.id, dto);
+  }
+
+  @Post('change-password')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Change password' })
+  async changePassword(
+    @Req() req: express.Request & { user: { id: string } },
+    @Body() dto: ChangePasswordDto,
+  ) {
+    await this.service.changePassword(req.user.id, dto.currentPassword, dto.newPassword);
+    return { message: 'Đổi mật khẩu thành công' };
+  }
+
+  @Post('onboarding')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Complete onboarding' })
+  completeOnboarding(
+    @Req() req: express.Request & { user: { id: string } },
+    @Body() dto: OnboardingDto,
+  ) {
+    return this.service.completeOnboarding(req.user.id, dto);
   }
 }

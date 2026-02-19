@@ -2,6 +2,7 @@ import { Controller, Post, Get, Delete, Body, UseGuards, Request, Res, Sse } fro
 import { ApiBearerAuth, ApiOperation, ApiTags, ApiProperty } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, IsOptional, IsNumber, IsIn } from 'class-validator';
 import { Type } from 'class-transformer';
+import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AiService } from './ai.service';
@@ -48,6 +49,7 @@ class ConfirmParseDto {
 @Controller('ai')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
+@Throttle({ default: { ttl: 60000, limit: 10 } })
 export class AiController {
   constructor(private aiService: AiService) {}
 

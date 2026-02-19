@@ -24,6 +24,8 @@ model User {
   password  String?
   name      String?
   role      Role     @default(USER)
+  salary    Float?
+  onboarded Boolean  @default(false)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

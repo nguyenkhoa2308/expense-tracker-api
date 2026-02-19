@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtService } from '@nestjs/jwt';
+import { SkipThrottle } from '@nestjs/throttler';
 import { Observable } from 'rxjs';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { NotificationService } from './notification.service';
@@ -28,6 +29,7 @@ export class NotificationController {
   ) {}
 
   @Sse('stream')
+  @SkipThrottle()
   @ApiOperation({ summary: 'SSE stream for realtime notifications' })
   stream(@Query('token') token: string): Observable<unknown> {
     if (!token) {

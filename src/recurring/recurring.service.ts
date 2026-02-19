@@ -10,8 +10,12 @@ export class RecurringService {
 
   constructor(private prisma: PrismaService) {}
 
+  private toUTCNoon(date: Date): Date {
+    // Set to UTC noon to avoid timezone shift issues when storing DateTime
+    return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0));
+  }
+
   async create(userId: string, dto: CreateRecurringDto) {
-    // Parse date as local midnight to avoid timezone issues
     const [y, m, d] = dto.nextDate.split('-').map(Number);
     let nextDate = new Date(y, m - 1, d);
     const today = new Date();
@@ -23,7 +27,7 @@ export class RecurringService {
         amount: Number(dto.amount),
         description: dto.description,
         category: dto.category,
-        date: nextDate,
+        date: this.toUTCNoon(nextDate),
         source: 'recurring',
         userId,
       };
@@ -40,7 +44,7 @@ export class RecurringService {
     return this.prisma.recurringTransaction.create({
       data: {
         ...dto,
-        nextDate,
+        nextDate: this.toUTCNoon(nextDate),
         userId,
       },
     });
@@ -60,11 +64,16 @@ export class RecurringService {
   }
 
   update(id: string, userId: string, dto: UpdateRecurringDto) {
+    let nextDate: Date | undefined;
+    if (dto.nextDate) {
+      const [y, m, d] = dto.nextDate.split('-').map(Number);
+      nextDate = this.toUTCNoon(new Date(y, m - 1, d));
+    }
     return this.prisma.recurringTransaction.updateMany({
       where: { id, userId },
       data: {
         ...dto,
-        nextDate: dto.nextDate ? new Date(dto.nextDate) : undefined,
+        nextDate,
       },
     });
   }
@@ -96,9 +105,15 @@ export class RecurringService {
       case 'weekly':
         next.setDate(next.getDate() + 7);
         break;
-      case 'monthly':
-        next.setMonth(next.getMonth() + 1);
+      case 'monthly': {
+        // Keep the same day each month, clamp if month is shorter
+        const targetDay = date.getDate();
+        const nextMonth = new Date(date.getFullYear(), date.getMonth() + 2, 0);
+        next.setDate(1); // avoid overflow when setting month
+        next.setMonth(date.getMonth() + 1);
+        next.setDate(Math.min(targetDay, nextMonth.getDate()));
         break;
+      }
       case 'yearly':
         next.setFullYear(next.getFullYear() + 1);
         break;
@@ -136,7 +151,7 @@ export class RecurringService {
             amount: item.amount,
             description: item.description,
             category: item.category,
-            date: currentDate,
+            date: this.toUTCNoon(currentDate),
             source: 'recurring',
             userId: item.userId,
           };
@@ -154,7 +169,7 @@ export class RecurringService {
         // currentDate is now the next future date
         await this.prisma.recurringTransaction.update({
           where: { id: item.id },
-          data: { nextDate: currentDate },
+          data: { nextDate: this.toUTCNoon(currentDate) },
         });
 
         this.logger.log(

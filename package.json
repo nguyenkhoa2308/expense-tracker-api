@@ -35,6 +35,7 @@
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/schedule": "^6.1.0",
     "@nestjs/swagger": "^11.2.3",
+    "@nestjs/throttler": "^6.5.0",
     "@prisma/client": "^6.19.0",
     "@types/cookie-parser": "^1.4.10",
     "bcrypt": "^6.0.0",

@@ -84,26 +84,32 @@ export class AiService {
       take: 10,
     });
 
-    const [expenses, incomes, expenseStats, incomeStats] = await Promise.all([
-      this.prisma.expense.findMany({
-        where: { userId },
-        orderBy: { date: 'desc' },
-        take: 100,
-      }),
-      this.prisma.income.findMany({
-        where: { userId },
-        orderBy: { date: 'desc' },
-        take: 100,
-      }),
-      this.getExpenseStats(userId),
-      this.getIncomeStats(userId),
-    ]);
+    const [user, expenses, incomes, expenseStats, incomeStats] =
+      await Promise.all([
+        this.prisma.user.findUnique({
+          where: { id: userId },
+          select: { salary: true },
+        }),
+        this.prisma.expense.findMany({
+          where: { userId },
+          orderBy: { date: 'desc' },
+          take: 100,
+        }),
+        this.prisma.income.findMany({
+          where: { userId },
+          orderBy: { date: 'desc' },
+          take: 100,
+        }),
+        this.getExpenseStats(userId),
+        this.getIncomeStats(userId),
+      ]);
 
     const context = this.buildContext(
       expenses,
       expenseStats,
       incomes,
       incomeStats,
+      user?.salary ?? undefined,
     );
     const systemPrompt = `Bạn là trợ lý tài chính AI trong ứng dụng "Expense Tracker".
 
@@ -327,6 +333,7 @@ Trả về đúng format JSON:
       byCategory: Record<string, number>;
       count: number;
     },
+    salary?: number,
   ): string {
     const expenseCategoryLabels: Record<string, string> = {
       food: 'Ăn uống',
@@ -358,7 +365,12 @@ Trả về đúng format JSON:
 
     const balance = incomeStats.total - expenseStats.total;
 
-    let context = `💰 SỐ DƯ HIỆN TẠI: ${formatCurrency(balance)} (${balance >= 0 ? 'Dương' : 'Âm'})
+    let context = salary
+      ? `💼 LƯƠNG HÀNG THÁNG: ${formatCurrency(salary)}
+`
+      : '';
+
+    context += `💰 SỐ DƯ HIỆN TẠI: ${formatCurrency(balance)} (${balance >= 0 ? 'Dương' : 'Âm'})${salary ? ` — Tỉ lệ chi tiêu/lương: ${Math.round((expenseStats.total / salary) * 100)}%` : ''}
 
 📈 TỔNG QUAN THU NHẬP:
 - Tổng thu nhập: ${formatCurrency(incomeStats.total)}
