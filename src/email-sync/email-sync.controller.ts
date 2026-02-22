@@ -2,10 +2,12 @@ import {
   Controller,
   Get,
   Post,
+  Body,
   Query,
   Res,
   UseGuards,
   Request,
+  Logger,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -16,6 +18,8 @@ import { EmailSyncService } from './email-sync.service';
 @ApiTags('email-sync')
 @Controller('email-sync')
 export class EmailSyncController {
+  private readonly logger = new Logger(EmailSyncController.name);
+
   constructor(
     private gmail: GmailService,
     private emailSync: EmailSyncService,
@@ -39,7 +43,8 @@ export class EmailSyncController {
   ) {
     try {
       await this.gmail.handleCallback(code, userId);
-      // Redirect to frontend settings page
+      // Register Gmail push notifications after connecting
+      await this.gmail.watchMailbox(userId);
       res.redirect(
         `${process.env.FRONTEND_URL || 'http://localhost:3000'}/settings?gmail=connected`,
       );
@@ -74,5 +79,37 @@ export class EmailSyncController {
   async getStatus(@Request() req: { user: { id: string } }) {
     // This info is returned in auth/profile, but keeping for convenience
     return { connected: true }; // Will be enhanced later
+  }
+
+  @Post('gmail/webhook')
+  @ApiOperation({ summary: 'Gmail Pub/Sub push notification webhook' })
+  async gmailWebhook(@Body() body: { message?: { data?: string } }) {
+    try {
+      if (!body.message?.data) {
+        return { status: 'no data' };
+      }
+
+      // Decode base64 Pub/Sub message
+      const decoded = JSON.parse(
+        Buffer.from(body.message.data, 'base64').toString('utf-8'),
+      );
+
+      this.logger.log(`Gmail webhook received for: ${decoded.emailAddress}`);
+
+      // Process in background (don't block response)
+      this.gmail
+        .handleWebhookNotification({
+          emailAddress: decoded.emailAddress,
+          historyId: decoded.historyId,
+        })
+        .catch((err) =>
+          this.logger.error('Webhook processing failed:', err),
+        );
+
+      return { status: 'ok' };
+    } catch (error) {
+      this.logger.error('Gmail webhook error:', error);
+      return { status: 'error' };
+    }
   }
 }

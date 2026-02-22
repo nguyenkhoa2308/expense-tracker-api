@@ -38,6 +38,7 @@ model User {
   gmailRefreshToken String? @map("gmail_refresh_token")
   gmailTokenExpiry  DateTime? @map("gmail_token_expiry")
   gmailConnected    Boolean @default(false) @map("gmail_connected")
+  gmailWatchExpiry  DateTime? @map("gmail_watch_expiry")
 
   expenses              Expense[]
   incomes               Income[]

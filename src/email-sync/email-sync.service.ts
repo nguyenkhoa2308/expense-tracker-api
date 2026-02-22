@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { GmailService } from './gmail.service';
 import { AiParserService } from './ai-parser.service';
@@ -14,25 +14,12 @@ export class EmailSyncService {
     private aiParser: AiParserService,
   ) {}
 
-  // Run every 5 minutes
-  @Cron(CronExpression.EVERY_5_MINUTES)
-  async syncAllUsers() {
-    this.logger.log('Starting email sync for all users...');
-
-    const users = await this.prisma.user.findMany({
-      where: { gmailConnected: true },
-      select: { id: true, email: true },
-    });
-
-    for (const user of users) {
-      try {
-        await this.syncUserEmails(user.id);
-      } catch (error) {
-        this.logger.error(`Failed to sync emails for user ${user.id}:`, error);
-      }
-    }
-
-    this.logger.log(`Email sync completed for ${users.length} users`);
+  // Renew Gmail watch every 6 days (watch expires after 7 days)
+  @Cron('0 0 */6 * *')
+  async renewGmailWatches() {
+    this.logger.log('Renewing Gmail watches for all users...');
+    await this.gmail.renewAllWatches();
+    this.logger.log('Gmail watch renewal completed');
   }
 
   // Sync emails for a single user

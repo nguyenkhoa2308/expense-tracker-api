@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { google, gmail_v1 } from 'googleapis';
 import { PrismaService } from '../prisma/prisma.service';
+import { AiParserService } from './ai-parser.service';
 
 @Injectable()
 export class GmailService {
@@ -11,7 +12,10 @@ export class GmailService {
     process.env.GOOGLE_REDIRECT_URI,
   );
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private aiParser: AiParserService,
+  ) {}
 
   // Generate OAuth URL for user to connect Gmail
   getAuthUrl(userId: string): string {
@@ -172,6 +176,107 @@ export class GmailService {
         from: email.from,
       },
     });
+  }
+
+  // Register Gmail push notifications (watch)
+  async watchMailbox(userId: string): Promise<void> {
+    const gmail = await this.getGmailClient(userId);
+    if (!gmail) return;
+
+    try {
+      const topicName =
+        process.env.GOOGLE_PUBSUB_TOPIC ||
+        'projects/smart-expense-tracker-480903/topics/gmail-push';
+
+      const res = await gmail.users.watch({
+        userId: 'me',
+        requestBody: {
+          topicName,
+          labelIds: ['INBOX'],
+        },
+      });
+
+      // Save watch expiration
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          gmailWatchExpiry: res.data.expiration
+            ? new Date(Number(res.data.expiration))
+            : null,
+        },
+      });
+
+      this.logger.log(`Gmail watch registered for user ${userId}, expires: ${res.data.expiration}`);
+    } catch (error) {
+      this.logger.error(`Failed to register Gmail watch for user ${userId}:`, error);
+    }
+  }
+
+  // Handle Pub/Sub webhook notification
+  async handleWebhookNotification(data: {
+    emailAddress: string;
+    historyId: string;
+  }): Promise<void> {
+    // Find user by Gmail address
+    const user = await this.prisma.user.findFirst({
+      where: {
+        email: data.emailAddress,
+        gmailConnected: true,
+      },
+    });
+
+    if (!user) {
+      this.logger.warn(`No connected user found for email: ${data.emailAddress}`);
+      return;
+    }
+
+    // Fetch new bank emails and process
+    const emails = await this.fetchBankEmails(user.id);
+
+    for (const email of emails) {
+      try {
+        const parsed = await this.aiParser.parseEmailContent(
+          email.body,
+          email.subject,
+        );
+
+        if (!parsed || parsed.type !== 'expense') {
+          await this.markAsSynced(user.id, email);
+          continue;
+        }
+
+        await this.prisma.expense.create({
+          data: {
+            userId: user.id,
+            amount: parsed.amount,
+            description: parsed.description,
+            category: parsed.category,
+            date: new Date(parsed.date),
+            source: 'email',
+            emailId: email.messageId,
+          },
+        });
+
+        await this.markAsSynced(user.id, email);
+        this.logger.log(`[Webhook] Created expense: ${parsed.amount} - ${parsed.description}`);
+      } catch (error) {
+        this.logger.error(`[Webhook] Failed to process email ${email.messageId}:`, error);
+      }
+    }
+  }
+
+  // Renew watch for all connected users
+  async renewAllWatches(): Promise<void> {
+    const users = await this.prisma.user.findMany({
+      where: { gmailConnected: true },
+      select: { id: true },
+    });
+
+    for (const user of users) {
+      await this.watchMailbox(user.id);
+    }
+
+    this.logger.log(`Renewed Gmail watch for ${users.length} users`);
   }
 }
 
