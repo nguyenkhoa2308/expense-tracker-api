@@ -1,5 +1,7 @@
 # Smart Expense Tracker - Backend
 
+![BE CI](https://github.com/nguyenkhoa2308/expense-tracker-api/actions/workflows/ci.yml/badge.svg)
+
 API server cho ứng dụng quản lý chi tiêu thông minh, xây dựng bằng NestJS với tích hợp AI và đồng bộ email tự động.
 
 ## Giới thiệu
