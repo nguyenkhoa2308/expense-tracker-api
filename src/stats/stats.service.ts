@@ -21,7 +21,13 @@ export interface ExtraFilters {
 export class StatsService {
   constructor(private prisma: PrismaService) {}
 
-  async getSummary(userId: string, type: SummaryType, month: number, year: number, filters?: ExtraFilters) {
+  async getSummary(
+    userId: string,
+    type: SummaryType,
+    month: number,
+    year: number,
+    filters?: ExtraFilters,
+  ) {
     const currentStart = new Date(year, month - 1, 1);
     const currentEnd = new Date(year, month, 1);
 
@@ -31,43 +37,81 @@ export class StatsService {
     const previousStart = new Date(prevYear, prevMonth - 1, 1);
     const previousEnd = new Date(prevYear, prevMonth, 1);
 
-    const hasFilters = filters && (filters.dateFrom || filters.dateTo || filters.amountMin !== undefined || filters.amountMax !== undefined || filters.category);
+    const hasFilters =
+      filters &&
+      (filters.dateFrom ||
+        filters.dateTo ||
+        filters.amountMin !== undefined ||
+        filters.amountMax !== undefined ||
+        filters.category);
 
     let current: PeriodStats;
     let previous: PeriodStats;
 
     if (type === SummaryType.EXPENSE) {
       [current, previous] = await Promise.all([
-        this.getExpenseStats(userId, currentStart, currentEnd, hasFilters ? filters : undefined),
+        this.getExpenseStats(
+          userId,
+          currentStart,
+          currentEnd,
+          hasFilters ? filters : undefined,
+        ),
         this.getExpenseStats(userId, previousStart, previousEnd),
       ]);
     } else if (type === SummaryType.INCOME) {
       [current, previous] = await Promise.all([
-        this.getIncomeStats(userId, currentStart, currentEnd, hasFilters ? filters : undefined),
+        this.getIncomeStats(
+          userId,
+          currentStart,
+          currentEnd,
+          hasFilters ? filters : undefined,
+        ),
         this.getIncomeStats(userId, previousStart, previousEnd),
       ]);
     } else {
       const [curExp, curInc, prevExp, prevInc] = await Promise.all([
-        this.getExpenseStats(userId, currentStart, currentEnd, hasFilters ? filters : undefined),
-        this.getIncomeStats(userId, currentStart, currentEnd, hasFilters ? filters : undefined),
+        this.getExpenseStats(
+          userId,
+          currentStart,
+          currentEnd,
+          hasFilters ? filters : undefined,
+        ),
+        this.getIncomeStats(
+          userId,
+          currentStart,
+          currentEnd,
+          hasFilters ? filters : undefined,
+        ),
         this.getExpenseStats(userId, previousStart, previousEnd),
         this.getIncomeStats(userId, previousStart, previousEnd),
       ]);
 
-      const change = (prevInc.total - prevExp.total) !== 0
-        ? (((curInc.total - curExp.total) - (prevInc.total - prevExp.total)) / Math.abs(prevInc.total - prevExp.total)) * 100
-        : 0;
+      const change =
+        prevInc.total - prevExp.total !== 0
+          ? ((curInc.total - curExp.total - (prevInc.total - prevExp.total)) /
+              Math.abs(prevInc.total - prevExp.total)) *
+            100
+          : 0;
 
       return {
-        current: { expense: curExp, income: curInc, balance: curInc.total - curExp.total },
-        previous: { expense: prevExp, income: prevInc, balance: prevInc.total - prevExp.total },
+        current: {
+          expense: curExp,
+          income: curInc,
+          balance: curInc.total - curExp.total,
+        },
+        previous: {
+          expense: prevExp,
+          income: prevInc,
+          balance: prevInc.total - prevExp.total,
+        },
         change: Math.round(change * 100) / 100,
       };
     }
 
-    const change = previous.total !== 0
-      ? ((current.total - previous.total) / Math.abs(previous.total)) * 100
-      : 0;
+    const change =
+      previous.total !== 0
+        ? ((current.total - previous.total) / Math.abs(previous.total)) * 100
+        : 0;
 
     return {
       current,
@@ -105,7 +149,12 @@ export class StatsService {
     return extra;
   }
 
-  private async getExpenseStats(userId: string, start: Date, end: Date, filters?: ExtraFilters): Promise<PeriodStats> {
+  private async getExpenseStats(
+    userId: string,
+    start: Date,
+    end: Date,
+    filters?: ExtraFilters,
+  ): Promise<PeriodStats> {
     const extraWhere = this.buildExtraWhere(filters);
 
     // If filters include custom date range, use that instead of month range
@@ -113,7 +162,11 @@ export class StatsService {
     delete extraWhere.date;
 
     const expenses = await this.prisma.expense.findMany({
-      where: { userId, date: dateWhere as Prisma.DateTimeFilter, ...extraWhere },
+      where: {
+        userId,
+        date: dateWhere as Prisma.DateTimeFilter,
+        ...extraWhere,
+      },
     });
 
     const total = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
@@ -125,14 +178,23 @@ export class StatsService {
     return { total, byCategory, count: expenses.length };
   }
 
-  private async getIncomeStats(userId: string, start: Date, end: Date, filters?: ExtraFilters): Promise<PeriodStats> {
+  private async getIncomeStats(
+    userId: string,
+    start: Date,
+    end: Date,
+    filters?: ExtraFilters,
+  ): Promise<PeriodStats> {
     const extraWhere = this.buildExtraWhere(filters);
 
     const dateWhere = extraWhere.date ?? { gte: start, lt: end };
     delete extraWhere.date;
 
     const incomes = await this.prisma.income.findMany({
-      where: { userId, date: dateWhere as Prisma.DateTimeFilter, ...extraWhere },
+      where: {
+        userId,
+        date: dateWhere as Prisma.DateTimeFilter,
+        ...extraWhere,
+      },
     });
 
     const total = incomes.reduce((sum, i) => sum + Number(i.amount), 0);

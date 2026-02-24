@@ -12,7 +12,9 @@ export class RecurringService {
 
   private toUTCNoon(date: Date): Date {
     // Set to UTC noon to avoid timezone shift issues when storing DateTime
-    return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0));
+    return new Date(
+      Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0),
+    );
   }
 
   async create(userId: string, dto: CreateRecurringDto) {
@@ -177,7 +179,7 @@ export class RecurringService {
         );
       } catch (error) {
         this.logger.error(
-          `Failed to process recurring ${item.id}: ${error.message}`,
+          `Failed to process recurring ${item.id}: ${(error as Error).message}`,
         );
       }
     }

@@ -1,6 +1,15 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsDateString, IsEnum, IsInt, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import {
+  IsDateString,
+  IsEnum,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+} from 'class-validator';
 
 export enum SummaryType {
   ALL = 'all',
@@ -9,7 +18,11 @@ export enum SummaryType {
 }
 
 export class SummaryQueryDto {
-  @ApiPropertyOptional({ description: 'Type of summary', enum: SummaryType, default: SummaryType.ALL })
+  @ApiPropertyOptional({
+    description: 'Type of summary',
+    enum: SummaryType,
+    default: SummaryType.ALL,
+  })
   @IsOptional()
   @IsEnum(SummaryType)
   type?: SummaryType = SummaryType.ALL;

@@ -1,4 +1,8 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBudgetDto } from './dto/create-budget.dto';
 import { UpdateBudgetDto } from './dto/update-budget.dto';
@@ -60,7 +64,10 @@ export class BudgetService {
     }
 
     const totalBudget = budgets.reduce((sum, b) => sum + Number(b.amount), 0);
-    const totalSpent = Object.values(spentByCategory).reduce((sum, v) => sum + v, 0);
+    const totalSpent = Object.values(spentByCategory).reduce(
+      (sum, v) => sum + v,
+      0,
+    );
 
     const categories = budgets.map((budget) => {
       const spent = spentByCategory[budget.category] || 0;

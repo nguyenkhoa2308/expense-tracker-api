@@ -66,7 +66,9 @@ export class AuthController {
   @Post('refresh')
   @ApiOperation({ summary: 'Refresh access token' })
   async refresh(@Req() req: express.Request) {
-    const cookie = req.cookies?.[REFRESH_COOKIE_NAME];
+    const cookie = (req.cookies as Record<string, string>)?.[
+      REFRESH_COOKIE_NAME
+    ];
     if (!cookie) {
       throw new UnauthorizedException('No refresh token');
     }
@@ -90,7 +92,9 @@ export class AuthController {
     @Req() req: express.Request,
     @Res({ passthrough: true }) res: express.Response,
   ) {
-    const cookie = req.cookies?.[REFRESH_COOKIE_NAME];
+    const cookie = (req.cookies as Record<string, string>)?.[
+      REFRESH_COOKIE_NAME
+    ];
     if (cookie) {
       const separatorIndex = cookie.indexOf(':');
       if (separatorIndex !== -1) {
@@ -136,7 +140,11 @@ export class AuthController {
     @Req() req: express.Request & { user: { id: string } },
     @Body() dto: ChangePasswordDto,
   ) {
-    await this.service.changePassword(req.user.id, dto.currentPassword, dto.newPassword);
+    await this.service.changePassword(
+      req.user.id,
+      dto.currentPassword,
+      dto.newPassword,
+    );
     return { message: 'Đổi mật khẩu thành công' };
   }
 

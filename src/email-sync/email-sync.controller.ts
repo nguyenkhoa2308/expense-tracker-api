@@ -76,14 +76,14 @@ export class EmailSyncController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get Gmail connection status' })
-  async getStatus(@Request() req: { user: { id: string } }) {
+  getStatus() {
     // This info is returned in auth/profile, but keeping for convenience
     return { connected: true }; // Will be enhanced later
   }
 
   @Post('gmail/webhook')
   @ApiOperation({ summary: 'Gmail Pub/Sub push notification webhook' })
-  async gmailWebhook(@Body() body: { message?: { data?: string } }) {
+  gmailWebhook(@Body() body: { message?: { data?: string } }) {
     try {
       if (!body.message?.data) {
         return { status: 'no data' };
@@ -92,7 +92,7 @@ export class EmailSyncController {
       // Decode base64 Pub/Sub message
       const decoded = JSON.parse(
         Buffer.from(body.message.data, 'base64').toString('utf-8'),
-      );
+      ) as { emailAddress: string; historyId: string };
 
       this.logger.log(`Gmail webhook received for: ${decoded.emailAddress}`);
 
@@ -102,9 +102,7 @@ export class EmailSyncController {
           emailAddress: decoded.emailAddress,
           historyId: decoded.historyId,
         })
-        .catch((err) =>
-          this.logger.error('Webhook processing failed:', err),
-        );
+        .catch((err) => this.logger.error('Webhook processing failed:', err));
 
       return { status: 'ok' };
     } catch (error) {

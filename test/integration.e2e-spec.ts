@@ -20,7 +20,9 @@ describe('Integration: Register → Login → Expense → Stats', () => {
 
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('api');
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
     await app.init();
 
     prisma = app.get(PrismaService);
@@ -35,7 +37,9 @@ describe('Integration: Register → Login → Expense → Stats', () => {
       await prisma.income.deleteMany({ where: { userId: user.id } });
       await prisma.notification.deleteMany({ where: { userId: user.id } });
       await prisma.chatMessage.deleteMany({ where: { userId: user.id } });
-      await prisma.recurringTransaction.deleteMany({ where: { userId: user.id } });
+      await prisma.recurringTransaction.deleteMany({
+        where: { userId: user.id },
+      });
       await prisma.user.delete({ where: { id: user.id } });
     }
     await app.close();
@@ -44,11 +48,15 @@ describe('Integration: Register → Login → Expense → Stats', () => {
   it('should register a new user', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/auth/register')
-      .send({ email: testEmail, password: testPassword, name: 'Integration Test' })
+      .send({
+        email: testEmail,
+        password: testPassword,
+        name: 'Integration Test',
+      })
       .expect(201);
 
     expect(res.body).toHaveProperty('access_token');
-    accessToken = res.body.access_token;
+    accessToken = (res.body as { access_token: string }).access_token;
   });
 
   it('should login with created user', async () => {
@@ -58,19 +66,24 @@ describe('Integration: Register → Login → Expense → Stats', () => {
       .expect(201);
 
     expect(res.body).toHaveProperty('access_token');
-    accessToken = res.body.access_token;
+    accessToken = (res.body as { access_token: string }).access_token;
   });
 
   it('should create an expense', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/expenses')
       .set('Authorization', `Bearer ${accessToken}`)
-      .send({ amount: 50000, category: 'food', description: 'Integration test expense' })
+      .send({
+        amount: 50000,
+        category: 'food',
+        description: 'Integration test expense',
+      })
       .expect(201);
 
-    expect(res.body).toHaveProperty('id');
-    expect(Number(res.body.amount)).toBe(50000);
-    expect(res.body.category).toBe('food');
+    const body = res.body as { id: string; amount: number; category: string };
+    expect(body).toHaveProperty('id');
+    expect(Number(body.amount)).toBe(50000);
+    expect(body.category).toBe('food');
   });
 
   it('should get stats with the created expense', async () => {
@@ -79,8 +92,13 @@ describe('Integration: Register → Login → Expense → Stats', () => {
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
 
-    expect(res.body.total).toBeGreaterThanOrEqual(50000);
-    expect(res.body.count).toBeGreaterThanOrEqual(1);
-    expect(res.body.byCategory).toHaveProperty('food');
+    const body = res.body as {
+      total: number;
+      count: number;
+      byCategory: Record<string, number>;
+    };
+    expect(body.total).toBeGreaterThanOrEqual(50000);
+    expect(body.count).toBeGreaterThanOrEqual(1);
+    expect(body.byCategory).toHaveProperty('food');
   });
 });

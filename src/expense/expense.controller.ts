@@ -81,7 +81,10 @@ export class ExpenseController {
   ) {
     const pdfBuffer = await this.service.exportPdf(req.user.id, query);
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'attachment; filename=bao-cao-chi-tieu.pdf');
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename=bao-cao-chi-tieu.pdf',
+    );
     res.send(pdfBuffer);
   }
 

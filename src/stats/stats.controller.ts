@@ -12,7 +12,9 @@ export class StatsController {
   constructor(private readonly service: StatsService) {}
 
   @Get('summary')
-  @ApiOperation({ summary: 'Get monthly summary with previous month comparison' })
+  @ApiOperation({
+    summary: 'Get monthly summary with previous month comparison',
+  })
   getSummary(
     @Request() req: { user: { id: string } },
     @Query() query: SummaryQueryDto,

@@ -81,7 +81,10 @@ export class IncomeController {
   ) {
     const pdfBuffer = await this.service.exportPdf(req.user.id, query);
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'attachment; filename=bao-cao-thu-nhap.pdf');
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename=bao-cao-thu-nhap.pdf',
+    );
     res.send(pdfBuffer);
   }
 

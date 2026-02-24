@@ -31,10 +31,7 @@ describe('BudgetService', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        BudgetService,
-        { provide: PrismaService, useValue: prisma },
-      ],
+      providers: [BudgetService, { provide: PrismaService, useValue: prisma }],
     }).compile();
 
     service = module.get<BudgetService>(BudgetService);

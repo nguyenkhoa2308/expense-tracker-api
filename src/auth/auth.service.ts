@@ -35,7 +35,11 @@ export class AuthService {
       },
     });
 
-    const accessToken = this.generateAccessToken(user.id, user.email, user.role);
+    const accessToken = this.generateAccessToken(
+      user.id,
+      user.email,
+      user.role,
+    );
     const refreshToken = await this.generateAndStoreRefreshToken(user.id);
 
     return { access_token: accessToken, refreshToken, userId: user.id };
@@ -55,7 +59,11 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const accessToken = this.generateAccessToken(user.id, user.email, user.role);
+    const accessToken = this.generateAccessToken(
+      user.id,
+      user.email,
+      user.role,
+    );
     const refreshToken = await this.generateAndStoreRefreshToken(user.id);
 
     return { access_token: accessToken, refreshToken, userId: user.id };
@@ -91,7 +99,11 @@ export class AuthService {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
-    const accessToken = this.generateAccessToken(user.id, user.email, user.role);
+    const accessToken = this.generateAccessToken(
+      user.id,
+      user.email,
+      user.role,
+    );
 
     return {
       access_token: accessToken,
@@ -131,18 +143,34 @@ export class AuthService {
     return user;
   }
 
-  async updateProfile(userId: string, data: { name?: string; salary?: number }) {
+  async updateProfile(
+    userId: string,
+    data: { name?: string; salary?: number },
+  ) {
     return this.prisma.user.update({
       where: { id: userId },
       data: {
         ...data,
         salary: data.salary === 0 ? null : data.salary,
       },
-      select: { id: true, email: true, name: true, role: true, salary: true, onboarded: true, gmailConnected: true, createdAt: true },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        salary: true,
+        onboarded: true,
+        gmailConnected: true,
+        createdAt: true,
+      },
     });
   }
 
-  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user || !user.password) {
       throw new UnauthorizedException('User not found');
@@ -152,10 +180,20 @@ export class AuthService {
       throw new UnauthorizedException('Mật khẩu hiện tại không đúng');
     }
     const hashed = await bcrypt.hash(newPassword, 10);
-    await this.prisma.user.update({ where: { id: userId }, data: { password: hashed } });
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { password: hashed },
+    });
   }
 
-  async completeOnboarding(userId: string, data: { name?: string; salary?: number; budgets?: { category: string; amount: number }[] }) {
+  async completeOnboarding(
+    userId: string,
+    data: {
+      name?: string;
+      salary?: number;
+      budgets?: { category: string; amount: number }[];
+    },
+  ) {
     await this.prisma.user.update({
       where: { id: userId },
       data: { name: data.name, salary: data.salary, onboarded: true },
@@ -178,7 +216,11 @@ export class AuthService {
     return this.getProfile(userId);
   }
 
-  private generateAccessToken(userId: string, email: string, role: string): string {
+  private generateAccessToken(
+    userId: string,
+    email: string,
+    role: string,
+  ): string {
     const payload = { sub: userId, email, role };
     return this.jwtService.sign(payload);
   }

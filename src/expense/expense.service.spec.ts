@@ -4,7 +4,9 @@ import { PrismaService } from '../prisma/prisma.service';
 
 describe('ExpenseService', () => {
   let service: ExpenseService;
-  let prisma: { expense: { create: jest.Mock; findMany: jest.Mock; count: jest.Mock } };
+  let prisma: {
+    expense: { create: jest.Mock; findMany: jest.Mock; count: jest.Mock };
+  };
 
   beforeEach(async () => {
     prisma = {
@@ -16,10 +18,7 @@ describe('ExpenseService', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        ExpenseService,
-        { provide: PrismaService, useValue: prisma },
-      ],
+      providers: [ExpenseService, { provide: PrismaService, useValue: prisma }],
     }).compile();
 
     service = module.get<ExpenseService>(ExpenseService);
@@ -47,7 +46,7 @@ describe('ExpenseService', () => {
           amount: 50000,
           category: 'food',
           userId: 'user-1',
-        }),
+        }) as Record<string, unknown>,
       });
     });
   });

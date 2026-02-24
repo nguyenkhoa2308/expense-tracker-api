@@ -39,10 +39,7 @@ export class RecurringController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get recurring transaction by ID' })
-  findOne(
-    @Request() req: { user: { id: string } },
-    @Param('id') id: string,
-  ) {
+  findOne(@Request() req: { user: { id: string } }, @Param('id') id: string) {
     return this.service.findOne(id, req.user.id);
   }
 
@@ -58,19 +55,13 @@ export class RecurringController {
 
   @Patch(':id/toggle')
   @ApiOperation({ summary: 'Toggle active/inactive' })
-  toggle(
-    @Request() req: { user: { id: string } },
-    @Param('id') id: string,
-  ) {
+  toggle(@Request() req: { user: { id: string } }, @Param('id') id: string) {
     return this.service.toggleActive(id, req.user.id);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete recurring transaction' })
-  remove(
-    @Request() req: { user: { id: string } },
-    @Param('id') id: string,
-  ) {
+  remove(@Request() req: { user: { id: string } }, @Param('id') id: string) {
     return this.service.remove(id, req.user.id);
   }
 }

@@ -43,10 +43,7 @@ export class NotificationService {
     return merge(subject.asObservable(), heartbeat$);
   }
 
-  private emit(
-    userId: string,
-    notification: Record<string, unknown>,
-  ) {
+  private emit(userId: string, notification: Record<string, unknown>) {
     const subjects = this.streams.get(userId);
     subjects?.forEach((s) => s.next({ data: notification }));
   }

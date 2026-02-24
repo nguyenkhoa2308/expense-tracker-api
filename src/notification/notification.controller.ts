@@ -36,7 +36,7 @@ export class NotificationController {
       throw new UnauthorizedException('Token is required');
     }
     try {
-      const payload = this.jwtService.verify(token);
+      const payload = this.jwtService.verify<{ sub: string }>(token);
       return this.service.subscribe(payload.sub);
     } catch {
       throw new UnauthorizedException('Invalid token');

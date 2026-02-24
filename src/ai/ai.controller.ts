@@ -1,8 +1,28 @@
-import { Controller, Post, Get, Delete, Body, UseGuards, Request, Res, Sse } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags, ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional, IsNumber, IsIn } from 'class-validator';
+import {
+  Controller,
+  Post,
+  Get,
+  Delete,
+  Body,
+  UseGuards,
+  Request,
+  Res,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiTags,
+  ApiProperty,
+} from '@nestjs/swagger';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsNumber,
+  IsIn,
+} from 'class-validator';
 import { Type } from 'class-transformer';
-import { Throttle, SkipThrottle } from '@nestjs/throttler';
+import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AiService } from './ai.service';
@@ -73,7 +93,9 @@ export class AiController {
       });
       res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     } catch {
-      res.write(`data: ${JSON.stringify({ error: 'Không thể xử lý yêu cầu AI' })}\n\n`);
+      res.write(
+        `data: ${JSON.stringify({ error: 'Không thể xử lý yêu cầu AI' })}\n\n`,
+      );
     }
     res.end();
   }

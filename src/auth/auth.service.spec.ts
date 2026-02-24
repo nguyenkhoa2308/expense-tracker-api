@@ -14,7 +14,9 @@ import * as bcrypt from 'bcrypt';
 
 describe('AuthService', () => {
   let service: AuthService;
-  let prisma: { user: { findUnique: jest.Mock; create: jest.Mock; update: jest.Mock } };
+  let prisma: {
+    user: { findUnique: jest.Mock; create: jest.Mock; update: jest.Mock };
+  };
   let jwtService: { sign: jest.Mock };
 
   beforeEach(async () => {
@@ -69,7 +71,11 @@ describe('AuthService', () => {
       });
 
       await expect(
-        service.register({ email: 'test@test.com', password: '123456', name: 'Test' }),
+        service.register({
+          email: 'test@test.com',
+          password: '123456',
+          name: 'Test',
+        }),
       ).rejects.toThrow(ConflictException);
     });
   });

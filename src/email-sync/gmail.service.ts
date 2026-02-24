@@ -79,8 +79,8 @@ export class GmailService {
     });
 
     // Auto refresh token if needed
-    this.oauth2Client.on('tokens', async (tokens) => {
-      await this.prisma.user.update({
+    this.oauth2Client.on('tokens', (tokens) => {
+      void this.prisma.user.update({
         where: { id: userId },
         data: {
           gmailAccessToken: tokens.access_token,
@@ -206,9 +206,14 @@ export class GmailService {
         },
       });
 
-      this.logger.log(`Gmail watch registered for user ${userId}, expires: ${res.data.expiration}`);
+      this.logger.log(
+        `Gmail watch registered for user ${userId}, expires: ${res.data.expiration}`,
+      );
     } catch (error) {
-      this.logger.error(`Failed to register Gmail watch for user ${userId}:`, error);
+      this.logger.error(
+        `Failed to register Gmail watch for user ${userId}:`,
+        error,
+      );
     }
   }
 
@@ -226,7 +231,9 @@ export class GmailService {
     });
 
     if (!user) {
-      this.logger.warn(`No connected user found for email: ${data.emailAddress}`);
+      this.logger.warn(
+        `No connected user found for email: ${data.emailAddress}`,
+      );
       return;
     }
 
@@ -258,9 +265,14 @@ export class GmailService {
         });
 
         await this.markAsSynced(user.id, email);
-        this.logger.log(`[Webhook] Created expense: ${parsed.amount} - ${parsed.description}`);
+        this.logger.log(
+          `[Webhook] Created expense: ${parsed.amount} - ${parsed.description}`,
+        );
       } catch (error) {
-        this.logger.error(`[Webhook] Failed to process email ${email.messageId}:`, error);
+        this.logger.error(
+          `[Webhook] Failed to process email ${email.messageId}:`,
+          error,
+        );
       }
     }
   }

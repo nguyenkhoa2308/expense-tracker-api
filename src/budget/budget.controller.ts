@@ -63,10 +63,7 @@ export class BudgetController {
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a budget' })
-  remove(
-    @Request() req: { user: { id: string } },
-    @Param('id') id: string,
-  ) {
+  remove(@Request() req: { user: { id: string } }, @Param('id') id: string) {
     return this.service.remove(id, req.user.id);
   }
 }
