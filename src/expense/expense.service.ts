@@ -10,19 +10,36 @@ import {
   PaginatedResponseDto,
   StatsQueryDto,
 } from '../common/dto';
+import { BudgetService } from '../budget/budget.service';
 
 @Injectable()
 export class ExpenseService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private budgetService: BudgetService,
+  ) {}
 
-  create(userId: string, dto: CreateExpenseDto) {
-    return this.prisma.expense.create({
+  async create(userId: string, dto: CreateExpenseDto) {
+    const expense = await this.prisma.expense.create({
       data: {
         ...dto,
         date: dto.date ? new Date(dto.date) : new Date(),
         userId,
       },
     });
+
+    const expenseDate = expense.date;
+    const month = expenseDate.getMonth() + 1;
+    const year = expenseDate.getFullYear();
+
+    await this.budgetService.checkBudgetAlert(
+      userId,
+      expense.category,
+      month,
+      year,
+    );
+
+    return expense;
   }
 
   findAllByUser(userId: string) {

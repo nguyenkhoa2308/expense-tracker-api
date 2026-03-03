@@ -110,6 +110,8 @@ model Budget {
   id        String   @id @default(uuid())
   category  String
   amount    Decimal  @db.Decimal(10, 2)
+  threshold Int @default(80) @map("threshold")
+  lastAlertMilestone Int @default(0) @map("last_alert_milestone")
   month     Int
   year      Int
   createdAt DateTime @default(now()) @map("created_at")

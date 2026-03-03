@@ -120,4 +120,73 @@ export class BudgetService {
 
     return this.prisma.budget.delete({ where: { id } });
   }
+
+  async checkBudgetAlert(
+    userId: string,
+    category: string,
+    month: number,
+    year: number,
+  ) {
+    const budget = await this.prisma.budget.findUnique({
+      where: {
+        userId_category_month_year: {
+          userId,
+          category,
+          month,
+          year,
+        },
+      },
+    });
+
+    if (!budget) {
+      return;
+    }
+
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 1);
+
+    const result = await this.prisma.expense.aggregate({
+      where: {
+        userId,
+        category,
+        date: { gte: startDate, lt: endDate },
+      },
+      _sum: { amount: true },
+    });
+
+    const totalSpent = Number(result._sum.amount ?? 0);
+    const budgetAmount = Number(budget.amount);
+
+    if (budgetAmount === 0) {
+      return;
+    }
+
+    const percentage = Math.round((totalSpent / budgetAmount) * 100);
+    const milestones = [budget.threshold];
+
+    for (let m = Math.ceil(budget.threshold / 10) * 10; m <= 100; m += 10) {
+      if (m !== budget.threshold) {
+        milestones.push(m);
+      }
+    }
+
+    const reached = milestones.filter((m) => percentage >= m);
+    const highestMilestone =
+      reached.length > 0 ? reached[reached.length - 1] : null;
+
+    if (highestMilestone && highestMilestone > budget.lastAlertMilestone) {
+      await this.prisma.notification.create({
+        data: {
+          userId,
+          type: 'BUDGET_WARNING',
+          message: `Chi tiêu "${category}" đã đạt ${percentage}% ngân sách tháng ${month}/${year}.`,
+          title: 'Budget Warning',
+        },
+      });
+      await this.prisma.budget.update({
+        where: { id: budget.id },
+        data: { lastAlertMilestone: highestMilestone },
+      });
+    }
+  }
 }
