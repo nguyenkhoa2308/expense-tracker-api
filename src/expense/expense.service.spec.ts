@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ExpenseService } from './expense.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { BudgetService } from '../budget/budget.service';
 
 describe('ExpenseService', () => {
   let service: ExpenseService;
@@ -18,7 +19,11 @@ describe('ExpenseService', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [ExpenseService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        ExpenseService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: BudgetService, useValue: { checkBudgetAlert: jest.fn() } },
+      ],
     }).compile();
 
     service = module.get<ExpenseService>(ExpenseService);
@@ -29,6 +34,7 @@ describe('ExpenseService', () => {
       const mockExpense = {
         id: 'exp-1',
         amount: 50000,
+        date: new Date('2026-03-01'),
         category: 'food',
         userId: 'user-1',
       };
