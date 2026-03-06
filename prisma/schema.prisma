@@ -18,6 +18,12 @@ enum NotificationType {
   SYSTEM
 }
 
+enum GoalStatus {
+  IN_PROGRESS    
+  COMPLETED      
+  EXPIRED        
+}
+
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
@@ -47,6 +53,7 @@ model User {
   chatMessages          ChatMessage[]
   notifications         Notification[]
   recurringTransactions RecurringTransaction[]
+  goals                 Goal[]
 
   @@map("users")
 }
@@ -175,4 +182,36 @@ model ChatMessage {
 
   @@index([userId, createdAt])
   @@map("chat_messages")
+}
+
+// Goals
+model Goal {
+  id              String      @id @default(uuid())
+  name            String
+  amount          Decimal     @db.Decimal(10, 2)
+  initialAmount   Decimal     @db.Decimal(10, 2) @default(0) @map("initial_amount")
+  deadline        DateTime    
+  status          GoalStatus  @default(IN_PROGRESS)
+  createdAt       DateTime    @default(now())         @map("created_at")
+  updatedAt       DateTime    @updatedAt              @map("updated_at")
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contributions GoalContribution[]
+
+  @@index([userId, status])
+  @@map("goals")
+}
+
+// GoalContribution 
+model GoalContribution {
+  id String @id @default(uuid())
+  amount Decimal @db.Decimal(10,2)
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  goalId String @map("goal_id")
+  goal Goal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@index([goalId])
+  @@map("goal_contributions")
 }

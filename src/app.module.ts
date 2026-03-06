@@ -14,6 +14,7 @@ import { NotificationModule } from './notification/notification.module';
 import { BudgetModule } from './budget/budget.module';
 import { RecurringModule } from './recurring/recurring.module';
 import { StatsModule } from './stats/stats.module';
+import { GoalModule } from './goal/goal.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { StatsModule } from './stats/stats.module';
     AiModule,
     NotificationModule,
     StatsModule,
+    GoalModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
